@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 // GET /api/books - Get all books
 export async function GET() {
   try {
-    const books = db.getAllBooks()
+    const books = await db.getAllBooks()
     return NextResponse.json({ success: true, data: books })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to fetch books" }, { status: 500 })
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "All fields are required" }, { status: 400 })
     }
 
-    const newBook = db.createBook({
+    const newBook = await db.createBook({
       title,
       author,
       publicationYear: Number.parseInt(publicationYear),

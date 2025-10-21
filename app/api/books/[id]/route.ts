@@ -5,7 +5,7 @@ import { db } from "@/lib/db"
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const book = db.getBookById(id)
+    const book = await db.getBookById(id)
 
     if (!book) {
       return NextResponse.json({ success: false, error: "Book not found" }, { status: 404 })
@@ -24,7 +24,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const { title, author, publicationYear, publishingHouse } = body
 
-    const updatedBook = db.updateBook(id, {
+    const updatedBook = await db.updateBook(id, {
       title,
       author,
       publicationYear: publicationYear ? Number.parseInt(publicationYear) : undefined,
@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const deleted = db.deleteBook(id)
+    const deleted = await db.deleteBook(id)
 
     if (!deleted) {
       return NextResponse.json({ success: false, error: "Book not found" }, { status: 404 })

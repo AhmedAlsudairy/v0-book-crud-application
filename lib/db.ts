@@ -1,5 +1,4 @@
-// In-memory database for books
-// This can be replaced with a real database later
+import { neon } from "@neondatabase/serverless"
 
 export interface Book {
   id: string
@@ -11,79 +10,132 @@ export interface Book {
   updatedAt: string
 }
 
-// In-memory storage
-const books: Book[] = [
-  {
-    id: "1",
-    title: "The Great Gatsby",
-    author: "F. Scott Fitzgerald",
-    publicationYear: 1925,
-    publishingHouse: "Charles Scribner's Sons",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: "1984",
-    author: "George Orwell",
-    publicationYear: 1949,
-    publishingHouse: "Secker & Warburg",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    title: "To Kill a Mockingbird",
-    author: "Harper Lee",
-    publicationYear: 1960,
-    publishingHouse: "J. B. Lippincott & Co.",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+// Create Neon SQL client
+const sql = neon(process.env.DATABASE_URL!)
 
 export const db = {
   // Get all books
-  getAllBooks: () => {
-    return books
+  getAllBooks: async (): Promise<Book[]> => {
+    const books = await sql`
+      SELECT * FROM books 
+      ORDER BY created_at DESC
+    `
+    return books.map((book) => ({
+      id: book.id.toString(),
+      title: book.title,
+      author: book.author,
+      publicationYear: book.publication_year,
+      publishingHouse: book.publishing_house,
+      createdAt: book.created_at,
+      updatedAt: book.updated_at,
+    }))
   },
 
   // Get book by ID
-  getBookById: (id: string) => {
-    return books.find((book) => book.id === id)
+  getBookById: async (id: string): Promise<Book | null> => {
+    const books = await sql`
+      SELECT * FROM books 
+      WHERE id = ${id}
+    `
+
+    if (books.length === 0) return null
+
+    const book = books[0]
+    return {
+      id: book.id.toString(),
+      title: book.title,
+      author: book.author,
+      publicationYear: book.publication_year,
+      publishingHouse: book.publishing_house,
+      createdAt: book.created_at,
+      updatedAt: book.updated_at,
+    }
   },
 
   // Create new book
-  createBook: (bookData: Omit<Book, "id" | "createdAt" | "updatedAt">) => {
-    const newBook: Book = {
-      ...bookData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  createBook: async (bookData: Omit<Book, "id" | "createdAt" | "updatedAt">): Promise<Book> => {
+    const books = await sql`
+      INSERT INTO books (title, author, publication_year, publishing_house)
+      VALUES (${bookData.title}, ${bookData.author}, ${bookData.publicationYear}, ${bookData.publishingHouse})
+      RETURNING *
+    `
+
+    const book = books[0]
+    return {
+      id: book.id.toString(),
+      title: book.title,
+      author: book.author,
+      publicationYear: book.publication_year,
+      publishingHouse: book.publishing_house,
+      createdAt: book.created_at,
+      updatedAt: book.updated_at,
     }
-    books.push(newBook)
-    return newBook
   },
 
   // Update book
-  updateBook: (id: string, bookData: Partial<Omit<Book, "id" | "createdAt" | "updatedAt">>) => {
-    const index = books.findIndex((book) => book.id === id)
-    if (index === -1) return null
+  updateBook: async (
+    id: string,
+    bookData: Partial<Omit<Book, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<Book | null> => {
+    const updates: string[] = []
+    const values: any[] = []
+    let paramIndex = 1
 
-    books[index] = {
-      ...books[index],
-      ...bookData,
-      updatedAt: new Date().toISOString(),
+    if (bookData.title !== undefined) {
+      updates.push(`title = $${paramIndex++}`)
+      values.push(bookData.title)
     }
-    return books[index]
+    if (bookData.author !== undefined) {
+      updates.push(`author = $${paramIndex++}`)
+      values.push(bookData.author)
+    }
+    if (bookData.publicationYear !== undefined) {
+      updates.push(`publication_year = $${paramIndex++}`)
+      values.push(bookData.publicationYear)
+    }
+    if (bookData.publishingHouse !== undefined) {
+      updates.push(`publishing_house = $${paramIndex++}`)
+      values.push(bookData.publishingHouse)
+    }
+
+    if (updates.length === 0) {
+      return db.getBookById(id)
+    }
+
+    updates.push(`updated_at = NOW()`)
+    values.push(id)
+
+    const query = `
+      UPDATE books 
+      SET ${updates.join(", ")}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `
+
+    const books = await sql(query, values)
+
+    if (books.length === 0) return null
+
+    const book = books[0]
+    return {
+      id: book.id.toString(),
+      title: book.title,
+      author: book.author,
+      publicationYear: book.publication_year,
+      publishingHouse: book.publishing_house,
+      createdAt: book.created_at,
+      updatedAt: book.updated_at,
+    }
   },
 
   // Delete book
-  deleteBook: (id: string) => {
-    const index = books.findIndex((book) => book.id === id)
-    if (index === -1) return false
+  deleteBook: async (id: string): Promise<boolean> => {
+    const result = await sql`
+      DELETE FROM books 
+      WHERE id = ${id}
+      RETURNING id
+    `
 
-    books.splice(index, 1)
-    return true
+    return result.length > 0
   },
 }
