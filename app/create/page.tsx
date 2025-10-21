@@ -35,6 +35,8 @@ export default function CreateBookPage() {
     setError("")
     setLoading(true)
 
+    console.log("[v0] Create Page: Submitting form with data:", formData)
+
     try {
       const response = await fetch("/api/books", {
         method: "POST",
@@ -43,13 +45,17 @@ export default function CreateBookPage() {
       })
 
       const data = await response.json()
+      console.log("[v0] Create Page: Received response:", data)
 
       if (data.success) {
+        console.log("[v0] Create Page: Book created successfully, redirecting to home")
         router.push("/")
       } else {
+        console.log("[v0] Create Page: Failed to create book:", data.error)
         setError(data.error || "Failed to create book")
       }
     } catch (err) {
+      console.error("[v0] Create Page: Error occurred:", err)
       setError("An error occurred. Please try again.")
     } finally {
       setLoading(false)

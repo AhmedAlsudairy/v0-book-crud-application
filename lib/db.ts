@@ -86,14 +86,18 @@ export const db = {
   createBook: async (bookData: Omit<Book, "id" | "createdAt" | "updatedAt">): Promise<Book> => {
     await initializeDatabase()
 
+    console.log("[v0] DB: Creating book with data:", bookData)
+
     const books = await sql`
       INSERT INTO books (title, author, publication_year, publishing_house)
       VALUES (${bookData.title}, ${bookData.author}, ${bookData.publicationYear}, ${bookData.publishingHouse})
       RETURNING *
     `
 
+    console.log("[v0] DB: Insert result:", books)
+
     const book = books[0]
-    return {
+    const result = {
       id: book.id.toString(),
       title: book.title,
       author: book.author,
@@ -102,6 +106,9 @@ export const db = {
       createdAt: book.created_at,
       updatedAt: book.updated_at,
     }
+
+    console.log("[v0] DB: Returning book:", result)
+    return result
   },
 
   // Update book

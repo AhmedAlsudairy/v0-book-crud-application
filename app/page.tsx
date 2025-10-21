@@ -21,13 +21,17 @@ export default function HomePage() {
 
   const fetchBooks = async () => {
     try {
+      console.log("[v0] Frontend: Fetching books from API...")
       const response = await fetch("/api/books")
       const data = await response.json()
+      console.log("[v0] Frontend: API response:", data)
+      console.log("[v0] Frontend: Books received:", data.data)
       if (data.success) {
         setBooks(data.data)
+        console.log("[v0] Frontend: Books state updated with", data.data.length, "books")
       }
     } catch (error) {
-      console.error("Failed to fetch books:", error)
+      console.error("[v0] Frontend: Failed to fetch books:", error)
     } finally {
       setLoading(false)
     }
