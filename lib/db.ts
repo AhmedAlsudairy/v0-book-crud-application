@@ -118,42 +118,23 @@ export const db = {
   ): Promise<Book | null> => {
     await initializeDatabase()
 
-    const updates: string[] = []
-    const values: any[] = []
-    let paramIndex = 1
-
-    if (bookData.title !== undefined) {
-      updates.push(`title = $${paramIndex++}`)
-      values.push(bookData.title)
-    }
-    if (bookData.author !== undefined) {
-      updates.push(`author = $${paramIndex++}`)
-      values.push(bookData.author)
-    }
-    if (bookData.publicationYear !== undefined) {
-      updates.push(`publication_year = $${paramIndex++}`)
-      values.push(bookData.publicationYear)
-    }
-    if (bookData.publishingHouse !== undefined) {
-      updates.push(`publishing_house = $${paramIndex++}`)
-      values.push(bookData.publishingHouse)
-    }
-
-    if (updates.length === 0) {
+    // If no fields to update, return the existing book
+    if (Object.keys(bookData).length === 0) {
       return db.getBookById(id)
     }
 
-    updates.push(`updated_at = NOW()`)
-    values.push(id)
-
-    const query = `
+    // Use template literals with Neon's tagged template syntax
+    const books = await sql`
       UPDATE books 
-      SET ${updates.join(", ")}
-      WHERE id = $${paramIndex}
+      SET 
+        title = ${bookData.title !== undefined ? bookData.title : sql`title`},
+        author = ${bookData.author !== undefined ? bookData.author : sql`author`},
+        publication_year = ${bookData.publicationYear !== undefined ? bookData.publicationYear : sql`publication_year`},
+        publishing_house = ${bookData.publishingHouse !== undefined ? bookData.publishingHouse : sql`publishing_house`},
+        updated_at = NOW()
+      WHERE id = ${id}
       RETURNING *
     `
-
-    const books = await sql(query, values)
 
     if (books.length === 0) return null
 
