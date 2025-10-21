@@ -13,9 +13,37 @@ export interface Book {
 // Create Neon SQL client
 const sql = neon(process.env.DATABASE_URL!)
 
+let isInitialized = false
+
+async function initializeDatabase() {
+  if (isInitialized) return
+
+  try {
+    // Check if table exists and create it if it doesn't
+    await sql`
+      CREATE TABLE IF NOT EXISTS books (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        author VARCHAR(255) NOT NULL,
+        publication_year INTEGER NOT NULL,
+        publishing_house VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+    isInitialized = true
+    console.log("[v0] Database initialized successfully")
+  } catch (error) {
+    console.error("[v0] Failed to initialize database:", error)
+    throw error
+  }
+}
+
 export const db = {
   // Get all books
   getAllBooks: async (): Promise<Book[]> => {
+    await initializeDatabase()
+
     const books = await sql`
       SELECT * FROM books 
       ORDER BY created_at DESC
@@ -33,6 +61,8 @@ export const db = {
 
   // Get book by ID
   getBookById: async (id: string): Promise<Book | null> => {
+    await initializeDatabase()
+
     const books = await sql`
       SELECT * FROM books 
       WHERE id = ${id}
@@ -54,6 +84,8 @@ export const db = {
 
   // Create new book
   createBook: async (bookData: Omit<Book, "id" | "createdAt" | "updatedAt">): Promise<Book> => {
+    await initializeDatabase()
+
     const books = await sql`
       INSERT INTO books (title, author, publication_year, publishing_house)
       VALUES (${bookData.title}, ${bookData.author}, ${bookData.publicationYear}, ${bookData.publishingHouse})
@@ -77,6 +109,8 @@ export const db = {
     id: string,
     bookData: Partial<Omit<Book, "id" | "createdAt" | "updatedAt">>,
   ): Promise<Book | null> => {
+    await initializeDatabase()
+
     const updates: string[] = []
     const values: any[] = []
     let paramIndex = 1
@@ -130,6 +164,8 @@ export const db = {
 
   // Delete book
   deleteBook: async (id: string): Promise<boolean> => {
+    await initializeDatabase()
+
     const result = await sql`
       DELETE FROM books 
       WHERE id = ${id}
